@@ -9,10 +9,11 @@ import (
 )
 
 type VirtualMachineSpec struct {
-	Name   string
-	ID     string
-	spec   *hcsschema.ComputeSystem
-	system *hcs.System
+	Name      string
+	ID        string
+	runtimeId string
+	spec      *hcsschema.ComputeSystem
+	system    *hcs.System
 }
 
 func CreateVirtualMachineSpec(name, id, vhdPath, isoPath, owner string, memoryInMB, processorCount int, vnicId, macAddress string) (*VirtualMachineSpec, error) {
@@ -107,16 +108,33 @@ func GetVirtualMachineSpec(id string) (*VirtualMachineSpec, error) {
 
 }
 
+// HasVirtualMachine
+func HasVirtualMachine(id string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	system, err := hcs.OpenComputeSystem(ctx, id)
+	if err != nil {
+		if hcs.IsNotExist(err) {
+			return false
+		} else {
+			return true
+		}
+	}
+	defer system.Close()
+
+	return true
+}
+
 // List all/specified Virtual Machine
-func ListVirtualMachines(name string) ([]*VirtualMachineSpec, error) {
+func ListVirtualMachines(id string) ([]*VirtualMachineSpec, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	query := ComputeSystemQuery{
 		Types: []string{"VirtualMachine"},
 	}
-	if len(name) != 0 {
-		query.IDs = []string{name}
+	if len(id) != 0 {
+		query.IDs = []string{id}
 	}
 
 	vms := []*VirtualMachineSpec{}
@@ -142,12 +160,17 @@ func ListVirtualMachines(name string) ([]*VirtualMachineSpec, error) {
 func (vm *VirtualMachineSpec) Create() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	system, err := hcs.CreateComputeSystem(ctx, vm.Name, vm.spec)
+	system, err := hcs.CreateComputeSystem(ctx, vm.ID, vm.spec)
 	if err != nil {
 		return err
 	}
+	properties, err := system.Properties(ctx)
+	if err != nil {
+		return err
+	}
+
+	vm.runtimeId = properties.RuntimeID.String()
 	vm.system = system
-	vm.ID = system.ID()
 
 	return nil
 }
