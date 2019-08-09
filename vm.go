@@ -184,12 +184,15 @@ func (vm *VirtualMachineSpec) Delete() error {
 	defer cancel()
 	system, err := hcs.OpenComputeSystem(ctx, vm.ID)
 	if err != nil {
-		return err
+		if hcs.IsNotExist(err) {
+			return nil
+		} else {
+			return err
+		}
 	}
 	defer system.Close()
 
 	return system.Terminate(ctx)
-
 }
 
 // ExecuteCommand executes a command in the Virtual Machine
