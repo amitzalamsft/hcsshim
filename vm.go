@@ -81,7 +81,7 @@ func CreateVirtualMachineSpec(name, id, vhdPath, isoPath, owner string, memoryIn
 }
 
 func getHcsSpec(system *hcs.System) *hcsschema.ComputeSystem {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
 
 	_, err := system.Properties(ctx)
@@ -93,7 +93,7 @@ func getHcsSpec(system *hcs.System) *hcsschema.ComputeSystem {
 }
 
 func GetVirtualMachineSpec(id string) (*VirtualMachineSpec, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
 	system, err := hcs.OpenComputeSystem(ctx, id)
 	if err != nil {
@@ -110,7 +110,7 @@ func GetVirtualMachineSpec(id string) (*VirtualMachineSpec, error) {
 
 // HasVirtualMachine
 func HasVirtualMachine(id string) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
 	system, err := hcs.OpenComputeSystem(ctx, id)
 	if err != nil {
@@ -128,7 +128,7 @@ func HasVirtualMachine(id string) bool {
 // List all/specified Virtual Machine
 func ListVirtualMachines(id string) ([]*VirtualMachineSpec, error) {
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
 	query := ComputeSystemQuery{
 		Types: []string{"VirtualMachine"},
@@ -158,7 +158,7 @@ func ListVirtualMachines(id string) ([]*VirtualMachineSpec, error) {
 
 // Create a Virtual Machine
 func (vm *VirtualMachineSpec) Create() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
 	system, err := hcs.CreateComputeSystem(ctx, vm.ID, vm.spec)
 	if err != nil {
@@ -177,7 +177,7 @@ func (vm *VirtualMachineSpec) Create() error {
 
 // Start Virtual Machine
 func (vm *VirtualMachineSpec) Start() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
 	system, err := hcs.OpenComputeSystem(ctx, vm.ID)
 	if err != nil {
@@ -190,7 +190,7 @@ func (vm *VirtualMachineSpec) Start() error {
 
 // Stop a Virtual Machine
 func (vm *VirtualMachineSpec) Stop() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
 	system, err := hcs.OpenComputeSystem(ctx, vm.ID)
 	if err != nil {
@@ -203,7 +203,7 @@ func (vm *VirtualMachineSpec) Stop() error {
 
 // Delete a Virtual Machine
 func (vm *VirtualMachineSpec) Delete() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
 	system, err := hcs.OpenComputeSystem(ctx, vm.ID)
 	if err != nil {
@@ -220,7 +220,7 @@ func (vm *VirtualMachineSpec) Delete() error {
 
 // ExecuteCommand executes a command in the Virtual Machine
 func (vm *VirtualMachineSpec) ExecuteCommand(command string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
 	system, err := hcs.OpenComputeSystem(ctx, vm.ID)
 	if err != nil {
