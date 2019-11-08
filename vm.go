@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/Microsoft/hcsshim/internal/hcs"
 	hcsschema "github.com/Microsoft/hcsshim/internal/schema2"
+	"github.com/Microsoft/hcsshim/internal/schema1"
 	"time"
 )
 
@@ -92,6 +93,24 @@ func getHcsSpec(system *hcs.System) *hcsschema.ComputeSystem {
 	return nil
 }
 
+func GetVirtualMachineState(id string) string {
+	properties, err := GetVirtualMachineProperties(id)
+	if err != nil {
+		return ""
+	}
+	return properties.State
+}
+
+func GetVirtualMachineProperties(id string) (*schema1.ContainerProperties, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
+	defer cancel()
+	system, err := hcs.OpenComputeSystem(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return system.Properties(ctx)
+}
+	
 func GetVirtualMachineSpec(id string) (*VirtualMachineSpec, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
