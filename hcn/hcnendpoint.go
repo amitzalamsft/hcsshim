@@ -27,6 +27,7 @@ var (
 
 // HostComputeEndpoint represents a network endpoint
 type HostComputeEndpoint struct {
+	CommonParams
 	Id                   string           `json:"ID,omitempty"`
 	Name                 string           `json:",omitempty"`
 	HostComputeNetwork   string           `json:",omitempty"` // GUID
