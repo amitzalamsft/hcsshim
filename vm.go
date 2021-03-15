@@ -112,6 +112,8 @@ func GetVirtualMachineProperties(id string) (*schema1.ContainerProperties, error
 	if err != nil {
 		return nil, err
 	}
+	defer system.Close()
+
 	return system.Properties(ctx)
 }
 
@@ -239,6 +241,19 @@ func (vm *VirtualMachineSpec) Delete() error {
 	defer system.Close()
 
 	return system.Terminate(ctx)
+}
+
+// Wait for a Virtual Machine exits
+func (vm *VirtualMachineSpec) Wait() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
+	defer cancel()
+	system, err := hcs.OpenComputeSystem(ctx, vm.ID)
+	if err != nil {
+		return err
+	}
+	defer system.Close()
+
+	return system.Wait()
 }
 
 // ExecuteCommand executes a command in the Virtual Machine
