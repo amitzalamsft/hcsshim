@@ -74,7 +74,6 @@ const (
 
 // HostComputeNetwork represents a network
 type HostComputeNetwork struct {
-	CommonParams
 	Id            string          `json:"ID,omitempty"`
 	Name          string          `json:",omitempty"`
 	Type          NetworkType     `json:",omitempty"`

@@ -19,7 +19,6 @@ type LoadBalancerPortMapping struct {
 
 // HostComputeLoadBalancer represents software load balancer.
 type HostComputeLoadBalancer struct {
-	CommonParams
 	Id                   string                    `json:"ID,omitempty"`
 	HostComputeEndpoints []string                  `json:",omitempty"`
 	SourceVIP            string                    `json:",omitempty"`

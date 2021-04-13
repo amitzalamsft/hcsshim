@@ -282,23 +282,3 @@ var (
 	// RequestTypeRefresh refreshes the settings provided.
 	RequestTypeRefresh RequestType = "Refresh"
 )
-
-type ResourcesParams struct {
-	state int `json:"State,omitempty"`
-}
-
-type ExtraParams struct {
-	resources ResourcesParams `json:"Resources,omitempty"`
-}
-
-type HealthParams struct {
-	extra ExtraParams `json:"Extra,omitempty"`
-}
-
-type CommonParams struct {
-	health HealthParams `json:"Health,omitempty"`
-}
-
-func (c CommonParams) GetState() int {
-	return c.health.extra.resources.state
-}
