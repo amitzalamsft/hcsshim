@@ -3,6 +3,7 @@ package hcn
 import (
 	"encoding/json"
 	"errors"
+	"sync"
 
 	"github.com/Microsoft/go-winio/pkg/guid"
 	"github.com/Microsoft/hcsshim/internal/interop"
@@ -108,6 +109,109 @@ type ModifyNetworkSettingRequest struct {
 
 type PolicyNetworkRequest struct {
 	Policies []NetworkPolicy `json:",omitempty"`
+}
+
+type NotificationBase struct {
+	Id    guid.GUID       `json:"ID"`
+	Flags uint32          `json:",omitempty"`
+	Data  json.RawMessage `json:",omitempty"`
+}
+
+type HcnServiceWatcher struct {
+	handleLock     sync.RWMutex
+	callbackNumber uintptr
+	watcherContext *notifcationWatcherContext
+	started        bool
+}
+
+func NewHcnServiceWatcher() *HcnServiceWatcher {
+	watcherContext := &notifcationWatcherContext{
+		channel: make(notificationChannel, 1),
+	}
+
+	callbackMapLock.Lock()
+	callbackNumber := nextCallback
+	nextCallback++
+	callbackMap[callbackNumber] = watcherContext
+	callbackMapLock.Unlock()
+
+	return &HcnServiceWatcher{
+		callbackNumber: callbackNumber,
+		watcherContext: watcherContext,
+	}
+}
+
+func (w *HcnServiceWatcher) Start() error {
+	w.handleLock.RLock()
+	defer w.handleLock.RUnlock()
+
+	if w.started {
+		return nil
+	}
+
+	var callbackHandle hcnCallbackHandle
+	err := hcnRegisterServiceCallback(notificationWatcherCallback, w.callbackNumber, &callbackHandle)
+	if err != nil {
+		return err
+	}
+
+	w.watcherContext.handle = callbackHandle
+	w.started = true
+	return nil
+}
+
+func (w *HcnServiceWatcher) Stop() error {
+	var handle hcnCallbackHandle
+
+	{
+		w.handleLock.RLock()
+		defer w.handleLock.RUnlock()
+
+		if !w.started {
+			return nil
+		}
+		w.started = false
+		handle = w.watcherContext.handle
+		w.watcherContext.handle = 0
+	}
+
+	if handle == 0 {
+		return nil
+	}
+
+	// hcnUnregisterServiceCallback has its own syncronization
+	// to wait for all callbacks to complete. We must NOT hold the callbackMapLock.
+	err := hcnUnregisterServiceCallback(handle)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *HcnServiceWatcher) Notification() <-chan HcnNotificationData {
+	w.handleLock.RLock()
+	defer w.handleLock.RUnlock()
+
+	if !w.started {
+		return nil
+	}
+	return w.watcherContext.channel
+}
+
+func (w *HcnServiceWatcher) Close() error {
+	w.Stop()
+
+	w.handleLock.RLock()
+	close(w.watcherContext.channel)
+	callbackNumber := w.callbackNumber
+	w.handleLock.RUnlock()
+
+	callbackMapLock.Lock()
+	delete(callbackMap, callbackNumber)
+	callbackMapLock.Unlock()
+
+	return nil
 }
 
 func getNetwork(networkGuid guid.GUID, query string) (*HostComputeNetwork, error) {
