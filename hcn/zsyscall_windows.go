@@ -78,6 +78,12 @@ var (
 	procHcnQuerySdnRouteProperties     = modcomputenetwork.NewProc("HcnQuerySdnRouteProperties")
 	procHcnDeleteSdnRoute              = modcomputenetwork.NewProc("HcnDeleteSdnRoute")
 	procHcnCloseSdnRoute               = modcomputenetwork.NewProc("HcnCloseSdnRoute")
+	procHcnOpenService                 = modcomputenetwork.NewProc("HcnOpenService")
+	procHcnRegisterServiceCallback     = modcomputenetwork.NewProc("HcnRegisterServiceCallback")
+	procHcnUnregisterServiceCallback   = modcomputenetwork.NewProc("HcnUnregisterServiceCallback")
+	procHcnCloseService                = modcomputenetwork.NewProc("HcnCloseService")
+	procHcnRegisterNetworkCallback     = modcomputenetwork.NewProc("HcnRegisterNetworkCallback")
+	procHcnUnregisterNetworkCallback   = modcomputenetwork.NewProc("HcnUnregisterNetworkCallback")
 )
 
 func SetCurrentThreadCompartmentId(compartmentId uint32) (hr error) {
@@ -785,6 +791,34 @@ func hcnCloseRoute(route hcnRoute) (hr error) {
 		return
 	}
 	r0, _, _ := syscall.Syscall(procHcnCloseSdnRoute.Addr(), 1, uintptr(route), 0, 0)
+	if int32(r0) < 0 {
+		if r0&0x1fff0000 == 0x00070000 {
+			r0 &= 0xffff
+		}
+		hr = syscall.Errno(r0)
+	}
+	return
+}
+
+func hcnRegisterNetworkCallback(network hcnNetwork, callback uintptr, context uintptr, callbackHandle *hcnCallbackHandle) (hr error) {
+	if hr = procHcnRegisterNetworkCallback.Find(); hr != nil {
+		return
+	}
+	r0, _, _ := syscall.Syscall6(procHcnRegisterNetworkCallback.Addr(), 4, uintptr(network), uintptr(callback), uintptr(context), uintptr(unsafe.Pointer(callbackHandle)), 0, 0)
+	if int32(r0) < 0 {
+		if r0&0x1fff0000 == 0x00070000 {
+			r0 &= 0xffff
+		}
+		hr = syscall.Errno(r0)
+	}
+	return
+}
+
+func hcnUnregisterNetworkCallback(callbackHandle hcnCallbackHandle) (hr error) {
+	if hr = procHcnUnregisterNetworkCallback.Find(); hr != nil {
+		return
+	}
+	r0, _, _ := syscall.Syscall(procHcnUnregisterNetworkCallback.Addr(), 1, uintptr(callbackHandle), 0, 0)
 	if int32(r0) < 0 {
 		if r0&0x1fff0000 == 0x00070000 {
 			r0 &= 0xffff
