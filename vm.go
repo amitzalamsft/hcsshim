@@ -13,6 +13,19 @@ import (
 	hcsschema "github.com/Microsoft/hcsshim/internal/schema2"
 )
 
+type VirtualMachineOptions struct {
+	Name               string
+	Id                 string
+	VhdPath            string
+	IsoPath            string
+	Owner              string
+	MemoryInMB         int32
+	ProcessorCount     int32
+	VnicId             string
+	MacAddress         string
+	UseGuestConnection bool
+}
+
 type VirtualMachineSpec struct {
 	Name      string
 	ID        string
@@ -21,9 +34,9 @@ type VirtualMachineSpec struct {
 	system    *hcs.System
 }
 
-func CreateVirtualMachineSpec(name, id, vhdPath, isoPath, owner string, memoryInMB, processorCount int, vnicId, macAddress string) (*VirtualMachineSpec, error) {
+func CreateVirtualMachineSpec(opts *VirtualMachineOptions) (*VirtualMachineSpec, error) {
 	spec := &hcsschema.ComputeSystem{
-		Owner: owner,
+		Owner: opts.Owner,
 		SchemaVersion: &hcsschema.Version{
 			Major: 2,
 			Minor: 1,
@@ -41,10 +54,10 @@ func CreateVirtualMachineSpec(name, id, vhdPath, isoPath, owner string, memoryIn
 			},
 			ComputeTopology: &hcsschema.Topology{
 				Memory: &hcsschema.Memory2{
-					SizeInMB: int32(memoryInMB),
+					SizeInMB: int32(opts.MemoryInMB),
 				},
 				Processor: &hcsschema.Processor2{
-					Count: int32(processorCount),
+					Count: int32(opts.ProcessorCount),
 				},
 			},
 			Devices: &hcsschema.Devices{
@@ -52,11 +65,11 @@ func CreateVirtualMachineSpec(name, id, vhdPath, isoPath, owner string, memoryIn
 					"primary": hcsschema.Scsi{
 						Attachments: map[string]hcsschema.Attachment{
 							"0": hcsschema.Attachment{
-								Path:  vhdPath,
+								Path:  opts.VhdPath,
 								Type_: "VirtualDisk",
 							},
 							"1": hcsschema.Attachment{
-								Path:  isoPath,
+								Path:  opts.IsoPath,
 								Type_: "Iso",
 							},
 						},
@@ -64,24 +77,27 @@ func CreateVirtualMachineSpec(name, id, vhdPath, isoPath, owner string, memoryIn
 				},
 				NetworkAdapters: map[string]hcsschema.NetworkAdapter{},
 			},
-			// GuestConnection: &hcsschema.GuestConnection{
-			//	UseVsock:            true,
-			//	UseConnectedSuspend: true,
-			//},
 		},
 	}
 
-	if len(vnicId) > 0 {
+	if len(opts.VnicId) > 0 {
 		spec.VirtualMachine.Devices.NetworkAdapters["ext"] = hcsschema.NetworkAdapter{
-			EndpointId: vnicId,
-			MacAddress: macAddress,
+			EndpointId: opts.VnicId,
+			MacAddress: opts.MacAddress,
+		}
+	}
+
+	if opts.UseGuestConnection {
+		spec.VirtualMachine.GuestConnection = &hcsschema.GuestConnection{
+			UseVsock:            true,
+			UseConnectedSuspend: true,
 		}
 	}
 
 	return &VirtualMachineSpec{
 		spec: spec,
-		ID:   id,
-		Name: name,
+		ID:   opts.Id,
+		Name: opts.Name,
 	}, nil
 }
 
