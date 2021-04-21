@@ -17,6 +17,15 @@ import (
 	"github.com/Microsoft/hcsshim/osversion"
 )
 
+type GpuAssignmentMode string
+
+const (
+	GpuAssignmentModeDisabled = GpuAssignmentMode("Disabled")
+	GpuAssignmentModeDefault  = GpuAssignmentMode("Default")
+	GpuAssignmentModeList     = GpuAssignmentMode("List")
+	GpuAssignmentModeMirror   = GpuAssignmentMode("Mirror")
+)
+
 type VirtualMachineOptions struct {
 	Name               string
 	Id                 string
@@ -452,6 +461,38 @@ func (vm *VirtualMachineSpec) RemovePlan9(shareName string, uvmPath string) (err
 	if err := system.Modify(ctx, modification); err != nil {
 		return fmt.Errorf("failed to remove plan9 share %s from %s: %+v: %s", shareName, vm.ID, modification, err)
 	}
+	return nil
+}
+
+func (vm *VirtualMachineSpec) UpdateGpuConfiguration(mode GpuAssignmentMode, allowVendorExtension bool, assignments map[string]uint16) (err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
+	defer cancel()
+
+	system, err := hcs.OpenComputeSystem(ctx, vm.ID)
+	if err != nil {
+		return err
+	}
+	defer system.Close()
+
+	settings := hcsschema.GpuConfiguration{
+		AssignmentMode:       string(mode),
+		AllowVendorExtension: allowVendorExtension,
+	}
+
+	if len(assignments) != 0 {
+		settings.AssignmentRequest = assignments
+	}
+
+	request := hcsschema.ModifySettingRequest{
+		RequestType:  requesttype.Update,
+		ResourcePath: "VirtualMachine/ComputeTopology/Gpu",
+		Settings:     settings,
+	}
+
+	if err := system.Modify(ctx, request); err != nil {
+		return err
+	}
+
 	return nil
 }
 
