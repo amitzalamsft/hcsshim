@@ -14,6 +14,7 @@ import (
 	"github.com/Microsoft/hcsshim/internal/requesttype"
 	"github.com/Microsoft/hcsshim/internal/schema1"
 	hcsschema "github.com/Microsoft/hcsshim/internal/schema2"
+	"github.com/Microsoft/hcsshim/internal/wclayer"
 	"github.com/Microsoft/hcsshim/osversion"
 )
 
@@ -50,6 +51,14 @@ type VirtualMachineSpec struct {
 }
 
 func CreateVirtualMachineSpec(opts *VirtualMachineOptions) (*VirtualMachineSpec, error) {
+	// Ensure the VM has access, we use opts.Id to create VM
+	if err := wclayer.GrantVmAccess(opts.Id, opts.VhdPath); err != nil {
+		return nil, err
+	}
+	if err := wclayer.GrantVmAccess(opts.Id, opts.IsoPath); err != nil {
+		return nil, err
+	}
+
 	spec := &hcsschema.ComputeSystem{
 		Owner: opts.Owner,
 		SchemaVersion: &hcsschema.Version{
