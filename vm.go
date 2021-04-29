@@ -86,13 +86,13 @@ func CreateVirtualMachineSpec(opts *VirtualMachineOptions) (*VirtualMachineSpec,
 			},
 			Devices: &hcsschema.Devices{
 				Scsi: map[string]hcsschema.Scsi{
-					"primary": hcsschema.Scsi{
+					"primary": {
 						Attachments: map[string]hcsschema.Attachment{
-							"0": hcsschema.Attachment{
+							"0": {
 								Path:  opts.VhdPath,
 								Type_: "VirtualDisk",
 							},
-							"1": hcsschema.Attachment{
+							"1": {
 								Path:  opts.IsoPath,
 								Type_: "Iso",
 							},
