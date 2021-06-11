@@ -105,6 +105,10 @@ func notificationWatcher(notificationType HcnNotification, callbackNumber uintpt
 		return 0
 	}
 
+	if notificationData == nil {
+		return 0
+	}
+
 	tmpString := syscall.UTF16ToString((*[1 << 29]uint16)(unsafe.Pointer(notificationData))[:])
 
 	var notifData NotificationBase
