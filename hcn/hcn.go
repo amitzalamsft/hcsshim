@@ -73,6 +73,7 @@ type hcnEndpoint syscall.Handle
 type hcnNamespace syscall.Handle
 type hcnLoadBalancer syscall.Handle
 type hcnRoute syscall.Handle
+type hcnCallbackHandle syscall.Handle
 
 // SchemaVersion for HCN Objects/Queries.
 type SchemaVersion = Version // hcnglobals.go

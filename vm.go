@@ -12,8 +12,8 @@ import (
 	"github.com/Microsoft/hcsshim/internal/guestrequest"
 	"github.com/Microsoft/hcsshim/internal/hcs"
 	"github.com/Microsoft/hcsshim/internal/requesttype"
-	"github.com/Microsoft/hcsshim/internal/schema1"
-	hcsschema "github.com/Microsoft/hcsshim/internal/schema2"
+	"github.com/Microsoft/hcsshim/internal/hcs/schema1"
+	hcsschema "github.com/Microsoft/hcsshim/internal/hcs/schema2"
 	"github.com/Microsoft/hcsshim/internal/wclayer"
 	"github.com/Microsoft/hcsshim/osversion"
 )
@@ -51,11 +51,14 @@ type VirtualMachineSpec struct {
 }
 
 func CreateVirtualMachineSpec(opts *VirtualMachineOptions) (*VirtualMachineSpec, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
+	defer cancel()
+	
 	// Ensure the VM has access, we use opts.Id to create VM
-	if err := wclayer.GrantVmAccess(opts.Id, opts.VhdPath); err != nil {
+	if err := wclayer.GrantVmAccess(ctx, opts.Id, opts.VhdPath); err != nil {
 		return nil, err
 	}
-	if err := wclayer.GrantVmAccess(opts.Id, opts.IsoPath); err != nil {
+	if err := wclayer.GrantVmAccess(ctx, opts.Id, opts.IsoPath); err != nil {
 		return nil, err
 	}
 
@@ -78,7 +81,7 @@ func CreateVirtualMachineSpec(opts *VirtualMachineOptions) (*VirtualMachineSpec,
 			},
 			ComputeTopology: &hcsschema.Topology{
 				Memory: &hcsschema.Memory2{
-					SizeInMB: int32(opts.MemoryInMB),
+					SizeInMB: uint64(opts.MemoryInMB),
 				},
 				Processor: &hcsschema.Processor2{
 					Count: int32(opts.ProcessorCount),

@@ -800,6 +800,34 @@ func hcnCloseRoute(route hcnRoute) (hr error) {
 	return
 }
 
+func hcnRegisterServiceCallback(callback uintptr, context uintptr, callbackHandle *hcnCallbackHandle) (hr error) {
+	if hr = procHcnRegisterServiceCallback.Find(); hr != nil {
+		return
+	}
+	r0, _, _ := syscall.Syscall(procHcnRegisterServiceCallback.Addr(), 3, uintptr(callback), uintptr(context), uintptr(unsafe.Pointer(callbackHandle)))
+	if int32(r0) < 0 {
+		if r0&0x1fff0000 == 0x00070000 {
+			r0 &= 0xffff
+		}
+		hr = syscall.Errno(r0)
+	}
+	return
+}
+
+func hcnUnregisterServiceCallback(callbackHandle hcnCallbackHandle) (hr error) {
+	if hr = procHcnUnregisterServiceCallback.Find(); hr != nil {
+		return
+	}
+	r0, _, _ := syscall.Syscall(procHcnUnregisterServiceCallback.Addr(), 1, uintptr(callbackHandle), 0, 0)
+	if int32(r0) < 0 {
+		if r0&0x1fff0000 == 0x00070000 {
+			r0 &= 0xffff
+		}
+		hr = syscall.Errno(r0)
+	}
+	return
+}
+
 func hcnRegisterNetworkCallback(network hcnNetwork, callback uintptr, context uintptr, callbackHandle *hcnCallbackHandle) (hr error) {
 	if hr = procHcnRegisterNetworkCallback.Find(); hr != nil {
 		return
