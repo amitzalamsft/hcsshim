@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"path"
 	"time"
+	"log"
 
 	"github.com/Microsoft/hcsshim/hcn"
 	"github.com/Microsoft/hcsshim/internal/guestrequest"
@@ -16,6 +17,9 @@ import (
 	hcsschema "github.com/Microsoft/hcsshim/internal/hcs/schema2"
 	"github.com/Microsoft/hcsshim/internal/wclayer"
 	"github.com/Microsoft/hcsshim/osversion"
+	"github.com/Microsoft/hcsshim/internal/cpugroup"
+	"github.com/Microsoft/hcsshim/internal/hcs/resourcepaths"
+	"github.com/Microsoft/hcsshim/internal/processorinfo"
 )
 
 type GpuAssignmentMode string
@@ -48,6 +52,75 @@ type VirtualMachineSpec struct {
 	runtimeId string
 	spec      *hcsschema.ComputeSystem
 	system    *hcs.System
+}
+
+
+func GetCpuTopology() ([]uint32, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
+	defer cancel()
+	processorTopology, err := processorinfo.HostProcessorInfo(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get host proecssor information: %s", err)
+	}
+
+	lpcount := processorTopology.LogicalProcessorCount;
+
+	lps := make([]uint32, lpcount)
+
+	var i uint32
+	for ; i < lpcount; i++ {
+		lpinfo := processorTopology.LogicalProcessors[i];
+		if lpinfo.RootVpIndex >= 0 {
+			log.Println("AMIT : rootvpindex: lpindex:", lpinfo.RootVpIndex, i)
+			lps[i] = 1
+		}
+	}
+
+	log.Println("AMIT: lps", lps)
+	return lps, nil
+}
+
+func CreateCpuGroup(id string, lps []uint32) (err error){
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
+	defer cancel()
+	cpugroup.Create(ctx, id, lps)
+
+	if err != nil {
+		return fmt.Errorf("failed to create cpugroup guid with: %v", err)
+	}
+
+	log.Println("AMIT created cpu group with id :", id)
+	return nil
+}
+
+func (vm *VirtualMachineSpec) BindCpuGroup(cpuGroupId string) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
+	defer cancel()
+	log.Println("AMIT trying to open compute system with ID...", vm.ID)
+	system, err := hcs.OpenComputeSystem(ctx, vm.ID)
+	if err != nil {
+		log.Println("AMIT failed to open compute system for vmid : %s, error : %s", vm.ID, err)
+		return err
+	}
+	defer system.Close()
+
+	log.Println("AMIT modifying setting request : %s", resourcepaths.CPUGroupResourcePath)
+	req := &hcsschema.ModifySettingRequest{
+		RequestType:  requesttype.Update,
+		ResourcePath: resourcepaths.CPUGroupResourcePath,
+		Settings: &hcsschema.CpuGroup{
+			Id: cpuGroupId,
+		},
+	}
+	
+	if err := system.Modify(ctx, req); err != nil {
+		log.Println("AMIT failed to modify cpugroup, error : %s", err)
+		return err
+	}
+	log.Println("AMIT : modified settings with cpugroup id : ", cpuGroupId)
+	return nil
 }
 
 func CreateVirtualMachineSpec(opts *VirtualMachineOptions) (*VirtualMachineSpec, error) {
@@ -121,7 +194,7 @@ func CreateVirtualMachineSpec(opts *VirtualMachineOptions) (*VirtualMachineSpec,
 			UseConnectedSuspend: true,
 		}
 	}
-
+	log.Println("AMIT : created virtual machine spec...")
 	return &VirtualMachineSpec{
 		spec: spec,
 		ID:   opts.Id,
@@ -229,18 +302,22 @@ func ListVirtualMachines(id string) ([]*VirtualMachineSpec, error) {
 func (vm *VirtualMachineSpec) Create() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 	defer cancel()
+	log.Println("AMIT : creating compute system handle...")
 	system, err := hcs.CreateComputeSystem(ctx, vm.ID, vm.spec)
 	if err != nil {
+		log.Println("AMIT returning from here...")
 		return err
 	}
 	properties, err := system.Properties(ctx)
 	if err != nil {
+		log.Println("AMIT returning from here...")
 		return err
 	}
 
 	vm.runtimeId = properties.RuntimeID.String()
 	vm.system = system
 
+	log.Println("AMIT : compute system handle created", vm.ID)
 	return nil
 }
 
@@ -269,6 +346,7 @@ func (vm *VirtualMachineSpec) Stop() error {
 
 	return system.Shutdown(ctx)
 }
+
 
 // Delete a Virtual Machine
 func (vm *VirtualMachineSpec) Delete() error {
